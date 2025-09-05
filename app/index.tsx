@@ -47,7 +47,7 @@ export default function PeopleListScreen(): React.ReactElement {
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ paddingVertical: 8 }}
           renderItem={({ item }) => (
-            <Link asChild href={`/people/${item.id}`}>
+            <Link asChild href={`/person/${item.id}`}>
               <Pressable accessibilityRole="button" style={styles.row}>
                 <Text style={styles.rowTitle}>
                   {item.firstName} {item.lastName}
