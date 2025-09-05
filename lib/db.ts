@@ -175,7 +175,7 @@ export type Interaction = {
 };
 
 export type NewInteraction = {
-  personId: string; // store as TEXT
+  personId: string | number; // store as TEXT
   channel: Channel;
   summary: string;
   happenedAt?: string; // ISO 8601
@@ -189,7 +189,7 @@ export async function insertInteraction(input: NewInteraction): Promise<string> 
   try {
     await db.runAsync(
       `INSERT INTO interactions (id, person_id, happened_at, channel, summary) VALUES (?, ?, ?, ?, ?)`,
-      [id, input.personId, when, input.channel, input.summary]
+      [id, String(input.personId), when, input.channel, input.summary]
     );
     await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(input.personId)]);
     await db.execAsync('COMMIT');
@@ -202,14 +202,14 @@ export async function insertInteraction(input: NewInteraction): Promise<string> 
 
 export async function updateInteraction(
   id: string,
-  changes: { summary: string; channel: Channel; happenedAt: string; personId: string }
+  changes: { summary: string; channel: Channel; happenedAt: string; personId: string | number }
 ): Promise<void> {
   const now = Date.now();
   await db.execAsync('BEGIN');
   try {
     await db.runAsync(
       `UPDATE interactions SET summary = ?, channel = ?, happened_at = ?, person_id = ? WHERE id = ?`,
-      [changes.summary, changes.channel, changes.happenedAt, changes.personId, id]
+      [changes.summary, changes.channel, changes.happenedAt, String(changes.personId), id]
     );
     await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(changes.personId)]);
     await db.execAsync('COMMIT');
@@ -219,7 +219,7 @@ export async function updateInteraction(
   }
 }
 
-export async function deleteInteraction(id: string, personId: string): Promise<void> {
+export async function deleteInteraction(id: string, personId: string | number): Promise<void> {
   const now = Date.now();
   await db.execAsync('BEGIN');
   try {
@@ -232,7 +232,7 @@ export async function deleteInteraction(id: string, personId: string): Promise<v
   }
 }
 
-export async function getInteractionsByPerson(personId: string): Promise<Interaction[]> {
+export async function getInteractionsByPerson(personId: string | number): Promise<Interaction[]> {
   const rows = await db.getAllAsync<{
     id: string;
     person_id: string;
@@ -241,7 +241,7 @@ export async function getInteractionsByPerson(personId: string): Promise<Interac
     summary: string;
   }>(
     `SELECT id, person_id, happened_at, channel, summary FROM interactions WHERE person_id = ? ORDER BY happened_at DESC`,
-    [personId]
+    [String(personId)]
   );
   return rows.map((r) => ({
     id: r.id,
