@@ -22,20 +22,101 @@ type PersonRow = {
 
 const db = SQLite.openDatabaseSync('crm-orbit.db');
 
+// Simple id generator (TEXT PK). Avoids extra deps.
+function generateId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export async function initDb(): Promise<void> {
+  await db.execAsync(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
+
+  // People table stays as originally defined
   await db.execAsync(
-    `PRAGMA journal_mode = WAL;
-     CREATE TABLE IF NOT EXISTS people (
-       id INTEGER PRIMARY KEY AUTOINCREMENT,
-       first_name TEXT NOT NULL,
-       last_name TEXT NOT NULL,
-       nickname TEXT,
-       notes TEXT,
-       created_at INTEGER NOT NULL,
-       updated_at INTEGER NOT NULL
-     );
-     CREATE INDEX IF NOT EXISTS idx_people_last_first ON people(last_name, first_name);`
+    `CREATE TABLE IF NOT EXISTS people (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      nickname TEXT,
+      notes TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_people_last_first ON people(last_name, first_name);`
   );
+
+  // Ensure interactions table exists with TEXT PK + ISO datetime. Migrate if needed.
+  const existing = await db.getFirstAsync<{ name: string; sql: string }>(
+    `SELECT name, sql FROM sqlite_master WHERE type='table' AND name='interactions'`
+  );
+
+  if (!existing) {
+    await db.execAsync(
+      `CREATE TABLE IF NOT EXISTS interactions (
+        id TEXT PRIMARY KEY,
+        person_id TEXT NOT NULL,
+        happened_at TEXT NOT NULL,
+        channel TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_interactions_person_time ON interactions(person_id, happened_at DESC);`
+    );
+  } else {
+    const cols = await db.getAllAsync<{ name: string; type: string }>(
+      `PRAGMA table_info('interactions')`
+    );
+    const colMap = new Map(cols.map((c) => [c.name, c.type.toUpperCase()]));
+    const needsMigration = !(
+      colMap.get('id')?.includes('TEXT') &&
+      colMap.get('person_id')?.includes('TEXT') &&
+      colMap.get('happened_at')?.includes('TEXT')
+    );
+    if (needsMigration) {
+      await db.execAsync('BEGIN');
+      try {
+        await db.execAsync(
+          `CREATE TABLE interactions_new (
+            id TEXT PRIMARY KEY,
+            person_id TEXT NOT NULL,
+            happened_at TEXT NOT NULL,
+            channel TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+          );`
+        );
+        // Copy rows in JS to transform types to TEXT/ISO
+        const oldRows = await db.getAllAsync<any>(
+          `SELECT id, person_id, happened_at, channel, summary FROM interactions`
+        );
+        for (const r of oldRows) {
+          const newId = String(r.id ?? generateId());
+          const newPersonId = String(r.person_id);
+          const iso = typeof r.happened_at === 'string'
+            ? r.happened_at
+            : new Date(Number(r.happened_at ?? Date.now())).toISOString();
+          const chan = String(r.channel ?? 'note');
+          const sum = String(r.summary ?? '');
+          await db.runAsync(
+            `INSERT INTO interactions_new (id, person_id, happened_at, channel, summary) VALUES (?, ?, ?, ?, ?)`,
+            [newId, newPersonId, iso, chan, sum]
+          );
+        }
+        await db.execAsync(`DROP TABLE interactions;`);
+        await db.execAsync(`ALTER TABLE interactions_new RENAME TO interactions;`);
+        await db.execAsync(
+          `CREATE INDEX IF NOT EXISTS idx_interactions_person_time ON interactions(person_id, happened_at DESC);`
+        );
+        await db.execAsync('COMMIT');
+      } catch (e) {
+        await db.execAsync('ROLLBACK');
+        throw e;
+      }
+    } else {
+      await db.execAsync(
+        `CREATE INDEX IF NOT EXISTS idx_interactions_person_time ON interactions(person_id, happened_at DESC);`
+      );
+    }
+  }
 }
 
 function mapRow(row: PersonRow): Person {
@@ -81,4 +162,110 @@ export async function getPerson(id: number): Promise<Person | null> {
     [id]
   );
   return row ? mapRow(row) : null;
+}
+
+export type Channel = 'note' | 'call' | 'text' | 'meet';
+
+export type Interaction = {
+  id: string;
+  personId: string;
+  happenedAt: string; // ISO 8601
+  channel: Channel;
+  summary: string;
+};
+
+export type NewInteraction = {
+  personId: string | number; // store as TEXT
+  channel: Channel;
+  summary: string;
+  happenedAt?: string; // ISO 8601
+};
+
+export async function insertInteraction(input: NewInteraction): Promise<string> {
+  const id = generateId();
+  const when = input.happenedAt ?? new Date().toISOString();
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(
+      `INSERT INTO interactions (id, person_id, happened_at, channel, summary) VALUES (?, ?, ?, ?, ?)`,
+      [id, String(input.personId), when, input.channel, input.summary]
+    );
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(input.personId)]);
+    await db.execAsync('COMMIT');
+    return id;
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function updateInteraction(
+  id: string,
+  changes: { summary: string; channel: Channel; happenedAt: string; personId: string | number }
+): Promise<void> {
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(
+      `UPDATE interactions SET summary = ?, channel = ?, happened_at = ?, person_id = ? WHERE id = ?`,
+      [changes.summary, changes.channel, changes.happenedAt, String(changes.personId), id]
+    );
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(changes.personId)]);
+    await db.execAsync('COMMIT');
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function deleteInteraction(id: string, personId: string | number): Promise<void> {
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(`DELETE FROM interactions WHERE id = ?`, [id]);
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(personId)]);
+    await db.execAsync('COMMIT');
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function getInteractionsByPerson(personId: string | number): Promise<Interaction[]> {
+  const rows = await db.getAllAsync<{
+    id: string;
+    person_id: string;
+    happened_at: string;
+    channel: string;
+    summary: string;
+  }>(
+    `SELECT id, person_id, happened_at, channel, summary FROM interactions WHERE person_id = ? ORDER BY happened_at DESC`,
+    [String(personId)]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    personId: String(r.person_id),
+    happenedAt: r.happened_at,
+    channel: r.channel as Channel,
+    summary: r.summary,
+  }));
+}
+
+export async function getInteractionById(id: string): Promise<Interaction | null> {
+  const r = await db.getFirstAsync<{
+    id: string;
+    person_id: string;
+    happened_at: string;
+    channel: string;
+    summary: string;
+  }>(`SELECT id, person_id, happened_at, channel, summary FROM interactions WHERE id = ? LIMIT 1`, [id]);
+  if (!r) return null;
+  return {
+    id: r.id,
+    personId: String(r.person_id),
+    happenedAt: r.happened_at,
+    channel: r.channel as Channel,
+    summary: r.summary,
+  };
 }

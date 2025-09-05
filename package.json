@@ -19,7 +19,8 @@
     "expo-local-authentication": "~16.0.5",
     "expo-secure-store": "~14.2.4",
     "expo-sqlite": "~15.2.14",
-    "expo-notifications": "~0.31.4"
+    "expo-notifications": "~0.31.4",
+    "@react-native-community/datetimepicker": "8.4.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
