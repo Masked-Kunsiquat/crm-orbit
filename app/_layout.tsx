@@ -15,6 +15,7 @@ export default function RootLayout(): React.ReactElement {
           <Stack.Screen name="index" options={{ title: 'People' }} />
           <Stack.Screen name="people/new" options={{ title: 'Add Person', presentation: 'card' }} />
           <Stack.Screen name="people/[id]" options={{ title: 'Person' }} />
+          <Stack.Screen name="people/[id]/interactions/new" options={{ title: 'Log Interaction' }} />
         </Stack>
       </AuthGate>
     </SafeAreaProvider>
