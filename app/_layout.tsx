@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AuthGate from '../components/AuthGate';
+import { initDb } from '../lib/db';
 
 export default function RootLayout(): JSX.Element {
+  useEffect(() => {
+    initDb().catch((e) => console.warn('DB init failed', e));
+  }, []);
   return (
     <SafeAreaProvider>
       <AuthGate>
@@ -16,4 +20,3 @@ export default function RootLayout(): JSX.Element {
     </SafeAreaProvider>
   );
 }
-
