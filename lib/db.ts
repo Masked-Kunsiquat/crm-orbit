@@ -25,6 +25,7 @@ const db = SQLite.openDatabaseSync('crm-orbit.db');
 export async function initDb(): Promise<void> {
   await db.execAsync(
     `PRAGMA journal_mode = WAL;
+     PRAGMA foreign_keys = ON;
      CREATE TABLE IF NOT EXISTS people (
        id INTEGER PRIMARY KEY AUTOINCREMENT,
        first_name TEXT NOT NULL,
@@ -34,7 +35,16 @@ export async function initDb(): Promise<void> {
        created_at INTEGER NOT NULL,
        updated_at INTEGER NOT NULL
      );
-     CREATE INDEX IF NOT EXISTS idx_people_last_first ON people(last_name, first_name);`
+     CREATE INDEX IF NOT EXISTS idx_people_last_first ON people(last_name, first_name);
+     CREATE TABLE IF NOT EXISTS interactions (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       person_id INTEGER NOT NULL,
+       happened_at INTEGER NOT NULL,
+       channel TEXT NOT NULL,
+       summary TEXT NOT NULL,
+       FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+     );
+     CREATE INDEX IF NOT EXISTS idx_interactions_person_time ON interactions(person_id, happened_at DESC);`
   );
 }
 
@@ -81,4 +91,61 @@ export async function getPerson(id: number): Promise<Person | null> {
     [id]
   );
   return row ? mapRow(row) : null;
+}
+
+export type Channel = 'note' | 'call' | 'text' | 'meet';
+
+export type Interaction = {
+  id: number;
+  personId: number;
+  happenedAt: number;
+  channel: Channel;
+  summary: string;
+};
+
+export type NewInteraction = {
+  personId: number;
+  channel: Channel;
+  summary: string;
+  happenedAt?: number;
+};
+
+export async function insertInteraction(input: NewInteraction): Promise<number> {
+  const when = input.happenedAt ?? Date.now();
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    const result = await db.runAsync(
+      `INSERT INTO interactions (person_id, happened_at, channel, summary) VALUES (?, ?, ?, ?)`,
+      [input.personId, when, input.channel, input.summary]
+    );
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, input.personId]);
+    await db.execAsync('COMMIT');
+    const id = Number((result as unknown as { lastInsertRowId?: number }).lastInsertRowId);
+    if (!Number.isFinite(id)) throw new Error('Failed to get insert id');
+    return id;
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function getInteractionsByPerson(personId: number): Promise<Interaction[]> {
+  const rows = await db.getAllAsync<{
+    id: number;
+    person_id: number;
+    happened_at: number;
+    channel: string;
+    summary: string;
+  }>(
+    `SELECT id, person_id, happened_at, channel, summary FROM interactions WHERE person_id = ? ORDER BY happened_at DESC`,
+    [personId]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    personId: r.person_id,
+    happenedAt: r.happened_at,
+    channel: r.channel as Channel,
+    summary: r.summary,
+  }));
 }
