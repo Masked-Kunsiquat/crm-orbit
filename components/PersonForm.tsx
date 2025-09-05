@@ -6,7 +6,7 @@ type Props = {
   onSubmit: (input: NewPerson) => void | Promise<void>;
 };
 
-export default function PersonForm({ onSubmit }: Props): JSX.Element {
+export default function PersonForm({ onSubmit }: Props): React.ReactElement {
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const [nickname, setNickname] = useState<string>('');
@@ -126,4 +126,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

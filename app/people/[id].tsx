@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView } from 're
 import { useLocalSearchParams } from 'expo-router';
 import { getPerson, type Person } from '../../lib/db';
 
-export default function PersonDetailScreen(): JSX.Element {
+export default function PersonDetailScreen(): React.ReactElement {
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
   const [person, setPerson] = useState<Person | null>(null);
@@ -93,4 +93,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
-

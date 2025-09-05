@@ -5,7 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const BIOMETRIC_ENABLED_KEY = 'biometricEnabled';
 
-export default function AuthGate({ children }: PropsWithChildren): JSX.Element {
+export default function AuthGate({ children }: PropsWithChildren): React.ReactElement {
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [checking, setChecking] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,4 +118,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

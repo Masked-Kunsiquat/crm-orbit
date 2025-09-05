@@ -4,7 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AuthGate from '../components/AuthGate';
 import { initDb } from '../lib/db';
 
-export default function RootLayout(): JSX.Element {
+export default function RootLayout(): React.ReactElement {
   useEffect(() => {
     initDb().catch((e) => console.warn('DB init failed', e));
   }, []);

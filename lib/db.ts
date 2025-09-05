@@ -20,38 +20,21 @@ type PersonRow = {
   updated_at: number;
 };
 
-const db = SQLite.openDatabase('crm-orbit.db');
-
-function executeSql(sql: string, params: unknown[] = []): Promise<SQLite.SQLResultSet> {
-  return new Promise((resolve, reject) => {
-    db.transaction((tx) => {
-      tx.executeSql(
-        sql,
-        params,
-        (_tx, result) => resolve(result),
-        (_tx, error) => {
-          reject(error);
-          return true;
-        }
-      );
-    });
-  });
-}
+const db = SQLite.openDatabaseSync('crm-orbit.db');
 
 export async function initDb(): Promise<void> {
-  await executeSql(
-    `CREATE TABLE IF NOT EXISTS people (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      first_name TEXT NOT NULL,
-      last_name TEXT NOT NULL,
-      nickname TEXT,
-      notes TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`
-  );
-  await executeSql(
-    `CREATE INDEX IF NOT EXISTS idx_people_last_first ON people(last_name, first_name)`
+  await db.execAsync(
+    `PRAGMA journal_mode = WAL;
+     CREATE TABLE IF NOT EXISTS people (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       first_name TEXT NOT NULL,
+       last_name TEXT NOT NULL,
+       nickname TEXT,
+       notes TEXT,
+       created_at INTEGER NOT NULL,
+       updated_at INTEGER NOT NULL
+     );
+     CREATE INDEX IF NOT EXISTS idx_people_last_first ON people(last_name, first_name);`
   );
 }
 
@@ -76,40 +59,26 @@ export type NewPerson = {
 
 export async function insertPerson(input: NewPerson): Promise<number> {
   const now = Date.now();
-  const res = await executeSql(
-    `INSERT INTO people (first_name, last_name, nickname, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+  const result = await db.runAsync(
+    `INSERT INTO people (first_name, last_name, nickname, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
     [input.firstName, input.lastName, input.nickname ?? null, input.notes ?? null, now, now]
   );
-  const id = res.insertId;
-  if (typeof id !== 'number') {
-    throw new Error('Failed to retrieve insert id');
-  }
+  const id = Number((result as unknown as { lastInsertRowId?: number }).lastInsertRowId);
+  if (!Number.isFinite(id)) throw new Error('Failed to get insert id');
   return id;
 }
 
 export async function getPeople(): Promise<Person[]> {
-  const res = await executeSql(
-    `SELECT id, first_name, last_name, nickname, notes, created_at, updated_at
-     FROM people
-     ORDER BY created_at DESC`
+  const rows = await db.getAllAsync<PersonRow>(
+    `SELECT id, first_name, last_name, nickname, notes, created_at, updated_at FROM people ORDER BY created_at DESC`
   );
-  const rows = res.rows as unknown as { length: number; item: (index: number) => PersonRow };
-  const out: Person[] = [];
-  for (let i = 0; i < rows.length; i += 1) {
-    out.push(mapRow(rows.item(i)));
-  }
-  return out;
+  return rows.map(mapRow);
 }
 
 export async function getPerson(id: number): Promise<Person | null> {
-  const res = await executeSql(
-    `SELECT id, first_name, last_name, nickname, notes, created_at, updated_at
-     FROM people WHERE id = ? LIMIT 1`,
+  const row = await db.getFirstAsync<PersonRow>(
+    `SELECT id, first_name, last_name, nickname, notes, created_at, updated_at FROM people WHERE id = ? LIMIT 1`,
     [id]
   );
-  const rows = res.rows as unknown as { length: number; item: (index: number) => PersonRow };
-  if (rows.length === 0) return null;
-  return mapRow(rows.item(0));
+  return row ? mapRow(row) : null;
 }
-

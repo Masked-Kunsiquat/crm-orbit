@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import PersonForm from '../../components/PersonForm';
 import { insertPerson, type NewPerson } from '../../lib/db';
 
-export default function NewPersonScreen(): JSX.Element {
+export default function NewPersonScreen(): React.ReactElement {
   const router = useRouter();
 
   async function handleSubmit(input: NewPerson): Promise<void> {
@@ -30,4 +30,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
 });
-

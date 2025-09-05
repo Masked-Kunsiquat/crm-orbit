@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from '
 import { Link, useFocusEffect } from 'expo-router';
 import { getPeople, type Person } from '../lib/db';
 
-export default function PeopleListScreen(): JSX.Element {
+export default function PeopleListScreen(): React.ReactElement {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
