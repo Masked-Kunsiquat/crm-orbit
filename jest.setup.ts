@@ -1,0 +1,231 @@
+// Extend jest-dom / jest-native matchers
+import '@testing-library/jest-native/extend-expect';
+
+// Lightweight and deterministic mocks for Expo + Router + SQLite
+
+// 1) Mock expo-router with a minimal Link and useFocusEffect wrapper
+jest.mock('expo-router', () => {
+  const React = require('react');
+  const { useEffect } = React;
+  return {
+    // Render-only Link; no navigation in tests
+    Link: ({ children }: any) => React.createElement(React.Fragment, null, children),
+    // Bridge to useEffect so focus callbacks run once after mount
+    useFocusEffect: (effect: any) => {
+      useEffect(effect, [effect]);
+    },
+  };
+});
+
+// 2) Mock expo-secure-store with in-memory Map
+jest.mock('expo-secure-store', () => {
+  const store = new Map<string, string>();
+  return {
+    getItemAsync: jest.fn(async (key: string) => (store.has(key) ? store.get(key)! : null)),
+    setItemAsync: jest.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+    deleteItemAsync: jest.fn(async (key: string) => {
+      store.delete(key);
+    }),
+    __reset: () => store.clear(),
+  };
+});
+
+// 3) Mock expo-local-authentication with tunable results
+jest.mock('expo-local-authentication', () => {
+  const state = {
+    hasHardware: true,
+    isEnrolled: true,
+    result: { success: true, warning: undefined as string | undefined },
+  };
+  return {
+    hasHardwareAsync: jest.fn(async () => state.hasHardware),
+    isEnrolledAsync: jest.fn(async () => state.isEnrolled),
+    authenticateAsync: jest.fn(async () => state.result),
+    __setMock: (overrides: Partial<typeof state>) => Object.assign(state, overrides),
+  };
+});
+
+// 4) Mock expo-sqlite with a tiny in-memory engine tailored to lib/db.ts usage
+jest.mock('expo-sqlite', () => {
+  type PersonRow = {
+    id: number;
+    first_name: string;
+    last_name: string;
+    nickname: string | null;
+    notes: string | null;
+    created_at: number;
+    updated_at: number;
+  };
+  type InteractionRow = {
+    id: string;
+    person_id: string; // TEXT
+    happened_at: string; // ISO
+    channel: string;
+    summary: string;
+  };
+
+  const state = {
+    people: [] as PersonRow[],
+    interactions: [] as InteractionRow[],
+    peopleAutoId: 1,
+    inTx: false,
+  };
+
+  function reset() {
+    state.people = [];
+    state.interactions = [];
+    state.peopleAutoId = 1;
+    state.inTx = false;
+  }
+
+  function openDatabaseSync() {
+    return {
+      async execAsync(sql: string) {
+        // Handle basic transaction and DDL no-ops
+        const chunks = sql.split(';').map((s) => s.trim()).filter(Boolean);
+        for (const s of chunks) {
+          const upper = s.toUpperCase();
+          if (upper === 'BEGIN' || upper.startsWith('BEGIN TRANSACTION')) {
+            state.inTx = true;
+          } else if (upper === 'COMMIT') {
+            state.inTx = false;
+          } else if (upper === 'ROLLBACK') {
+            state.inTx = false;
+          } // PRAGMA / CREATE TABLE / CREATE INDEX are ignored as no-ops
+        }
+      },
+      async runAsync(sql: string, params: any[] = []) {
+        const s = sql.trim().replace(/\s+/g, ' ').toUpperCase();
+        // INSERT person
+        if (s.startsWith('INSERT INTO PEOPLE')) {
+          const [firstName, lastName, nickname, notes, createdAt, updatedAt] = params;
+          const row: PersonRow = {
+            id: state.peopleAutoId++,
+            first_name: String(firstName),
+            last_name: String(lastName),
+            nickname: nickname ?? null,
+            notes: notes ?? null,
+            created_at: Number(createdAt),
+            updated_at: Number(updatedAt),
+          };
+          state.people.push(row);
+          return { lastInsertRowId: row.id } as any;
+        }
+        // UPDATE people.updated_at
+        if (s.startsWith('UPDATE PEOPLE SET UPDATED_AT')) {
+          const [ts, id] = params;
+          const pid = Number(id);
+          const p = state.people.find((x) => x.id === pid);
+          if (p) p.updated_at = Number(ts);
+          return {} as any;
+        }
+        // INSERT interaction
+        if (s.startsWith('INSERT INTO INTERACTIONS')) {
+          const [id, personId, happenedAt, channel, summary] = params;
+          state.interactions.push({
+            id: String(id),
+            person_id: String(personId),
+            happened_at: String(happenedAt),
+            channel: String(channel),
+            summary: String(summary),
+          });
+          return {} as any;
+        }
+        // UPDATE interaction
+        if (s.startsWith('UPDATE INTERACTIONS SET')) {
+          const [summary, channel, happenedAt, personId, id] = params;
+          const it = state.interactions.find((r) => r.id === String(id));
+          if (it) {
+            it.summary = String(summary);
+            it.channel = String(channel);
+            it.happened_at = String(happenedAt);
+            it.person_id = String(personId);
+          }
+          return {} as any;
+        }
+        // DELETE interaction
+        if (s.startsWith('DELETE FROM INTERACTIONS')) {
+          const [id] = params;
+          const target = String(id);
+          state.interactions = state.interactions.filter((r) => r.id !== target);
+          return {} as any;
+        }
+        // Unhandled runAsync SQL
+        return {} as any;
+      },
+      async getAllAsync(sql: string, params: any[] = []) {
+        const S = sql.trim().replace(/\s+/g, ' ').toUpperCase();
+        // SELECT people ordered
+        if (S.startsWith('SELECT ID, FIRST_NAME, LAST_NAME')) {
+          const rows = [...state.people].sort((a, b) => b.created_at - a.created_at);
+          return rows as any[];
+        }
+        // PRAGMA table_info('interactions') — return expected columns
+        if (S.startsWith('PRAGMA TABLE_INFO')) {
+          return [
+            { name: 'id', type: 'TEXT' },
+            { name: 'person_id', type: 'TEXT' },
+            { name: 'happened_at', type: 'TEXT' },
+            { name: 'channel', type: 'TEXT' },
+            { name: 'summary', type: 'TEXT' },
+          ] as any[];
+        }
+        // SELECT interactions by person ordered desc by happened_at
+        if (S.startsWith('SELECT ID, PERSON_ID, HAPPENED_AT, CHANNEL, SUMMARY FROM INTERACTIONS WHERE PERSON_ID =')) {
+          const [personId] = params;
+          const rows = state.interactions
+            .filter((r) => r.person_id === String(personId))
+            .sort((a, b) => (a.happened_at > b.happened_at ? -1 : a.happened_at < b.happened_at ? 1 : 0));
+          return rows as any[];
+        }
+        return [] as any[];
+      },
+      async getFirstAsync(sql: string, params: any[] = []) {
+        const S = sql.trim().replace(/\s+/g, ' ').toUpperCase();
+        // sqlite_master check for interactions
+        if (S.includes("FROM SQLITE_MASTER") && S.includes("NAME='INTERACTIONS'")) {
+          // Simulate not existing; initDb will create it
+          return undefined as any;
+        }
+        // SELECT person by id
+        if (S.startsWith('SELECT ID, FIRST_NAME, LAST_NAME') && S.includes('FROM PEOPLE WHERE ID =')) {
+          const [id] = params;
+          const pid = Number(id);
+          const row = state.people.find((p) => p.id === pid);
+          return (row ?? undefined) as any;
+        }
+        // SELECT interaction by id
+        if (S.startsWith('SELECT ID, PERSON_ID, HAPPENED_AT, CHANNEL, SUMMARY FROM INTERACTIONS WHERE ID =')) {
+          const [id] = params;
+          const row = state.interactions.find((r) => r.id === String(id));
+          return (row ?? undefined) as any;
+        }
+        return undefined as any;
+      },
+    };
+  }
+
+  return {
+    openDatabaseSync,
+    __resetDb: reset,
+  };
+});
+
+// Ensure a clean slate between tests
+beforeEach(() => {
+  // Reset expo-secure-store
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const SecureStore = require('expo-secure-store');
+    SecureStore.__reset?.();
+  } catch {}
+  // Reset in-memory sqlite
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const SQLite = require('expo-sqlite');
+    SQLite.__resetDb?.();
+  } catch {}
+});
+
