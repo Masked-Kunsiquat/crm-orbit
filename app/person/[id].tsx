@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView, Pressable, FlatList, Platform, ToastAndroid } from 'react-native';
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { getPerson, type Person, getInteractionsByPerson, type Interaction, deleteInteraction } from '../../lib/db';
+import { getPerson, type Person, getInteractionsByPerson, type Interaction, deleteInteraction, getUpcomingRemindersByPerson, type Reminder } from '../../lib/db';
 import { ChannelChip } from '../../components/ChannelPicker';
 
 function formatRelative(iso: string): string {
@@ -31,17 +31,20 @@ export default function PersonDetail(): React.ReactElement {
   const [person, setPerson] = useState<Person | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [expandedTimeId, setExpandedTimeId] = useState<string | null>(null);
   const router = useRouter();
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      const [p, list] = await Promise.all([
+      const [p, list, rem] = await Promise.all([
         getPerson(idNum),
         getInteractionsByPerson(idStr),
+        getUpcomingRemindersByPerson(idStr, 5),
       ]);
       setPerson(p);
       setInteractions(list);
+      setReminders(rem);
     } catch (e: unknown) {
       Alert.alert('Error', (e as Error).message);
     } finally {
@@ -102,11 +105,18 @@ export default function PersonDetail(): React.ReactElement {
         <Text accessibilityRole="header" style={styles.header}>
           {person.firstName} {person.lastName}
         </Text>
-        <Link asChild href={`/interaction/new?personId=${idStr}&channel=note`}>
-          <Pressable accessibilityRole="button" style={styles.addBtn}>
-            <Text style={styles.addBtnText}>Add Note</Text>
-          </Pressable>
-        </Link>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Link asChild href={`/reminder/new?personId=${idStr}`}>
+            <Pressable accessibilityRole="button" style={styles.addBtn}>
+              <Text style={styles.addBtnText}>Set reminder</Text>
+            </Pressable>
+          </Link>
+          <Link asChild href={`/interaction/new?personId=${idStr}&channel=note`}>
+            <Pressable accessibilityRole="button" style={styles.addBtn}>
+              <Text style={styles.addBtnText}>Add note</Text>
+            </Pressable>
+          </Link>
+        </View>
       </View>
       {person.nickname ? (
         <Text style={styles.sub}>Nickname: {person.nickname}</Text>
@@ -117,6 +127,34 @@ export default function PersonDetail(): React.ReactElement {
       <Text style={styles.meta}>Created: {new Date(person.createdAt).toLocaleString()}</Text>
       <Text style={styles.meta}>Updated: {new Date(person.updatedAt).toLocaleString()}</Text>
 
+      {/* Upcoming Reminders */}
+      <Text style={[styles.header, { fontSize: 18, marginTop: 16 }]}>Upcoming reminders</Text>
+      {reminders.length === 0 ? (
+        <Text style={styles.empty}>No upcoming reminders.</Text>
+      ) : (
+        <FlatList
+          data={reminders}
+          keyExtractor={(it) => it.id}
+          scrollEnabled={false}
+          renderItem={({ item }) => {
+            const due = new Date(item.dueAt);
+            const overdue = due.getTime() < Date.now();
+            return (
+              <Link asChild href={`/reminder/edit?id=${item.id}`}>
+                <Pressable accessibilityRole="button" style={styles.reminderRow}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={styles.reminderTitle}>{item.title}</Text>
+                    {overdue ? <Text style={styles.overdue}>overdue</Text> : null}
+                  </View>
+                  <Text style={styles.reminderMeta}>{due.toLocaleString()}</Text>
+                </Pressable>
+              </Link>
+            );
+          }}
+        />
+      )}
+
+      {/* Interactions */}
       <Text style={[styles.header, { fontSize: 18, marginTop: 16 }]}>Interactions</Text>
       {interactions.length === 0 ? (
         <Text style={styles.empty}>No interactions yet. Log the first note.</Text>
@@ -174,5 +212,10 @@ const styles = StyleSheet.create({
   editText: { color: '#1e3a8a', fontWeight: '600' },
   delBtn: { paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#fee2e2', borderRadius: 6 },
   delText: { color: '#991b1b', fontWeight: '600' },
+  reminderRow: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginTop: 8, gap: 4 },
+  reminderTitle: { fontWeight: '600', color: '#111827' },
+  reminderMeta: { color: '#6b7280', fontSize: 12 },
+  overdue: { color: '#b91c1c', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
 });
+
 

@@ -66,9 +66,19 @@ jest.mock('expo-sqlite', () => {
     summary: string;
   };
 
+  type ReminderRow = {
+    id: string;
+    person_id: string; // TEXT
+    due_at: string; // ISO
+    title: string;
+    notes: string | null;
+    done: number; // 0|1
+  };
+
   const state = {
     people: [] as PersonRow[],
     interactions: [] as InteractionRow[],
+    reminders: [] as ReminderRow[],
     peopleAutoId: 1,
     inTx: false,
   };
@@ -76,6 +86,7 @@ jest.mock('expo-sqlite', () => {
   function reset() {
     state.people = [];
     state.interactions = [];
+    state.reminders = [];
     state.peopleAutoId = 1;
     state.inTx = false;
   }
@@ -152,6 +163,37 @@ jest.mock('expo-sqlite', () => {
           state.interactions = state.interactions.filter((r) => r.id !== target);
           return {} as any;
         }
+        // INSERT reminder
+        if (s.startsWith('INSERT INTO REMINDERS')) {
+          const [id, personId, dueAt, title, notes] = params;
+          state.reminders.push({
+            id: String(id),
+            person_id: String(personId),
+            due_at: String(dueAt),
+            title: String(title),
+            notes: notes ?? null,
+            done: 0,
+          });
+          return {} as any;
+        }
+        // UPDATE reminder full set
+        if (s.startsWith('UPDATE REMINDERS SET')) {
+          const [title, dueAt, notes, done, id] = params;
+          const r = state.reminders.find((x) => x.id === String(id));
+          if (r) {
+            r.title = String(title);
+            r.due_at = String(dueAt);
+            r.notes = notes ?? null;
+            r.done = Number(done) ? 1 : 0;
+          }
+          return {} as any;
+        }
+        // DELETE reminder
+        if (s.startsWith('DELETE FROM REMINDERS')) {
+          const [id] = params;
+          state.reminders = state.reminders.filter((r) => r.id !== String(id));
+          return {} as any;
+        }
         // Unhandled runAsync SQL
         return {} as any;
       },
@@ -180,6 +222,16 @@ jest.mock('expo-sqlite', () => {
             .sort((a, b) => (a.happened_at > b.happened_at ? -1 : a.happened_at < b.happened_at ? 1 : 0));
           return rows as any[];
         }
+        // SELECT reminders upcoming by person asc by due_at with limit
+        if (S.startsWith('SELECT ID, PERSON_ID, DUE_AT, TITLE, NOTES, DONE FROM REMINDERS WHERE PERSON_ID =')) {
+          const [personId, limit] = params;
+          const max = Number(limit) || 5;
+          const rows = state.reminders
+            .filter((r) => r.person_id === String(personId) && r.done === 0)
+            .sort((a, b) => (a.due_at < b.due_at ? -1 : a.due_at > b.due_at ? 1 : 0))
+            .slice(0, max);
+          return rows as any[];
+        }
         return [] as any[];
       },
       async getFirstAsync(sql: string, params: any[] = []) {
@@ -202,6 +254,12 @@ jest.mock('expo-sqlite', () => {
           const row = state.interactions.find((r) => r.id === String(id));
           return (row ?? undefined) as any;
         }
+        // SELECT reminder by id
+        if (S.startsWith('SELECT ID, PERSON_ID, DUE_AT, TITLE, NOTES, DONE FROM REMINDERS WHERE ID =')) {
+          const [id] = params;
+          const row = state.reminders.find((r) => r.id === String(id));
+          return (row ?? undefined) as any;
+        }
         return undefined as any;
       },
     };
@@ -210,6 +268,28 @@ jest.mock('expo-sqlite', () => {
   return {
     openDatabaseSync,
     __resetDb: reset,
+  };
+});
+
+// 5) Mock expo-notifications with in-memory scheduled notifications
+jest.mock('expo-notifications', () => {
+  type Scheduled = { identifier: string; content: any; trigger: any };
+  const scheduled: Scheduled[] = [];
+  let counter = 0;
+  return {
+    setNotificationHandler: jest.fn(async () => {}),
+    requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+    setNotificationChannelAsync: jest.fn(async () => {}),
+    scheduleNotificationAsync: jest.fn(async ({ content, trigger }: any) => {
+      const id = `notif-${++counter}`;
+      scheduled.push({ identifier: id, content, trigger });
+      return id;
+    }),
+    getAllScheduledNotificationsAsync: jest.fn(async () => scheduled.map((s) => ({ ...s }))),
+    cancelScheduledNotificationAsync: jest.fn(async (id: string) => {
+      const idx = scheduled.findIndex((s) => s.identifier === id);
+      if (idx >= 0) scheduled.splice(idx, 1);
+    }),
   };
 });
 
