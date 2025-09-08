@@ -5,6 +5,11 @@ describe('person.updated_at bumps on reminder create/edit/delete/done', () => {
     await initDb();
   });
 
+  afterEach(() => {
+    // Restore Date.now spy so it doesn't leak across tests
+    jest.restoreAllMocks();
+  });
+
   test('updated_at changes across reminder lifecycle', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
     const personId = await insertPerson({ firstName: 'Grace', lastName: 'Hopper' });
@@ -37,4 +42,3 @@ describe('person.updated_at bumps on reminder create/edit/delete/done', () => {
     expect(p4!.updatedAt).toBeGreaterThan(p3!.updatedAt);
   });
 });
-
