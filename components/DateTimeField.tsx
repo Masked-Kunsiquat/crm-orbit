@@ -47,7 +47,7 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
       <Text style={styles.label}>{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label} button`}
+        accessibilityLabel="Open date and time picker"
         hitSlop={MIN_HIT_SLOP_10}
         onPress={handleOpen}
         style={styles.button}
