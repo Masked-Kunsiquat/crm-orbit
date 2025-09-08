@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, Platform, ToastAndroid, ActivityIndicator } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel, Interaction } from '../../lib/db';
 import { deleteInteraction, getInteractionById, updateInteraction } from '../../lib/db';
+import { openAndroidDateTimePicker } from '../../lib/datetime';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function EditInteraction(): React.ReactElement {
   const params = useLocalSearchParams<{ id: string }>();
@@ -16,6 +18,7 @@ export default function EditInteraction(): React.ReactElement {
   const [saving, setSaving] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [showPicker, setShowPicker] = useState<boolean>(false);
+  const [picking, setPicking] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,9 +72,30 @@ export default function EditInteraction(): React.ReactElement {
     }
   }
 
-  function onChangePicker(_: any, date?: Date): void {
-    setShowPicker(Platform.OS === 'ios');
-    if (date) setWhen(date);
+  function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
+    // iOS inline picker only
+    if (event.type === 'set' && date) setWhen(date);
+  }
+
+  /**
+   * Open the date/time picker.
+   * On Android, guard against double-taps using `picking`.
+   */
+  async function handleOpenPicker(): Promise<void> {
+    if (Platform.OS === 'android') {
+      if (picking) return;
+      setPicking(true);
+      try {
+        const picked = await openAndroidDateTimePicker(when);
+        if (picked) setWhen(picked);
+      } catch (e) {
+        // no-op; ensure picking resets
+      } finally {
+        setPicking(false);
+      }
+      return;
+    }
+    setShowPicker(true);
   }
 
   async function handleDelete(): Promise<void> {
@@ -116,22 +140,41 @@ export default function EditInteraction(): React.ReactElement {
         onChangeText={setSummary}
       />
       <Text style={styles.label}>When</Text>
-      <Pressable accessibilityRole="button" onPress={() => setShowPicker(true)} style={styles.pickerBtn}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Select date and time"
+        hitSlop={MIN_HIT_SLOP_10}
+        onPress={handleOpenPicker}
+        style={styles.pickerBtn}
+      >
         <Text style={styles.pickerBtnText}>{when.toLocaleString()}</Text>
       </Pressable>
-      {showPicker && (
+      {Platform.OS === 'ios' && showPicker && (
         <DateTimePicker
           value={when}
           mode="datetime"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display="inline"
           onChange={onChangePicker}
         />
       )}
       <View style={styles.row}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={handleSave} style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Save button"
+          hitSlop={MIN_HIT_SLOP_10}
+          disabled={saving}
+          onPress={handleSave}
+          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+        >
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={handleDelete} style={styles.deleteBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete button"
+          hitSlop={MIN_HIT_SLOP_10}
+          onPress={handleDelete}
+          style={styles.deleteBtn}
+        >
           <Text style={styles.deleteText}>Delete</Text>
         </Pressable>
       </View>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { openAndroidDateTimePicker } from '../lib/datetime';
+import { MIN_HIT_SLOP_10 } from '../lib/ui';
 
 type Props = {
   label?: string;
@@ -15,23 +17,34 @@ type Props = {
  * - Android: two-step flow (date, then time), merging into one Date.
  */
 export default function DateTimeField({ label = 'Date & time', value, onChange, display }: Props): React.ReactElement {
-  // iOS picker visibility
-  const [showIOS, setShowIOS] = useState<boolean>(false);
+  const [show, setShow] = useState<boolean>(false);
+  const [picking, setPicking] = useState<boolean>(false);
+  const disp = display ?? (Platform.OS === 'ios' ? 'inline' : 'default');
 
-  // Android two-step flow visibility and temp state
-  const [showAndroidDate, setShowAndroidDate] = useState<boolean>(false);
-  const [showAndroidTime, setShowAndroidTime] = useState<boolean>(false);
-  const [tempAndroidDate, setTempAndroidDate] = useState<Date | null>(null);
+  function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
+    // iOS inline picker only
+    if (event.type === 'set' && date) onChange(date);
+  }
 
-  const iosDisplay = display ?? 'inline';
-  // Prevent unsupported Android display='inline'
-  const androidDisplay = display && display !== 'inline' ? display : 'default';
-
-  // iOS: single datetime picker
-  function onChangePickerIOS(_: any, date?: Date): void {
-    // Keep the inline picker open on iOS; Android flow handled separately
-    setShowIOS(true);
-    if (date) onChange(date);
+  /**
+   * Open the date/time picker.
+   * On Android, guard against double-taps using `picking`.
+   */
+  async function handleOpen(): Promise<void> {
+    if (Platform.OS === 'android') {
+      if (picking) return;
+      setPicking(true);
+      try {
+        const picked = await openAndroidDateTimePicker(value);
+        if (picked) onChange(picked);
+      } catch (e) {
+        // no-op; ensure picking resets
+      } finally {
+        setPicking(false);
+      }
+      return;
+    }
+    setShow(true);
   }
 
   // Android: step 1 — date, then step 2 — time
@@ -85,20 +98,17 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable accessibilityRole="button" onPress={onPressOpen} style={styles.button}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open date and time picker"
+        hitSlop={MIN_HIT_SLOP_10}
+        onPress={handleOpen}
+        style={styles.button}
+      >
         <Text style={styles.buttonText}>{value.toLocaleString()}</Text>
       </Pressable>
-
-      {Platform.OS === 'ios' && showIOS && (
-        <DateTimePicker value={value} mode="datetime" display={iosDisplay} onChange={onChangePickerIOS} />
-      )}
-
-      {Platform.OS !== 'ios' && showAndroidDate && (
-        <DateTimePicker value={value} mode="date" display={androidDisplay} onChange={onChangeAndroidDate} />
-      )}
-
-      {Platform.OS !== 'ios' && showAndroidTime && (
-        <DateTimePicker value={tempAndroidDate ?? value} mode="time" display={androidDisplay} onChange={onChangeAndroidTime} />
+      {Platform.OS === 'ios' && show && (
+        <DateTimePicker value={value} mode="datetime" display={disp} onChange={onChangePicker} />
       )}
     </View>
   );
@@ -117,4 +127,3 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#111827' },
 });
-

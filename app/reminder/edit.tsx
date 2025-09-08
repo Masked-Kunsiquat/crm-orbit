@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimeField from '../../components/DateTimeField';
 import { deleteReminder, getReminderById, markReminderDone, updateReminder, type Reminder } from '../../lib/db';
 import { cancelReminderById, scheduleReminder } from '../../lib/notify';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function EditReminder(): React.ReactElement {
   const params = useLocalSearchParams<{ id: string }>();
@@ -150,7 +151,13 @@ export default function EditReminder(): React.ReactElement {
       <View style={styles.row}>
         <Text style={styles.label}>Done</Text>
         <Switch accessibilityLabel="Mark done" value={done} onValueChange={setDone} />
-        <Pressable accessibilityRole="button" onPress={handleMarkDone} style={styles.doneBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Mark done button"
+          hitSlop={MIN_HIT_SLOP_10}
+          onPress={handleMarkDone}
+          style={styles.doneBtn}
+        >
           <Text style={styles.doneText}>Mark done</Text>
         </Pressable>
       </View>
@@ -158,17 +165,54 @@ export default function EditReminder(): React.ReactElement {
       <View style={styles.snoozeRow}>
         <Text style={styles.label}>Snooze</Text>
         <View style={styles.snoozeBtns}>
-          <Pressable accessibilityRole="button" onPress={() => handleSnooze(60 * 60 * 1000)} style={styles.snoozeBtn}><Text style={styles.snoozeText}>+1h</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={() => handleSnooze(24 * 60 * 60 * 1000)} style={styles.snoozeBtn}><Text style={styles.snoozeText}>+1d</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={() => handleSnooze(7 * 24 * 60 * 60 * 1000)} style={styles.snoozeBtn}><Text style={styles.snoozeText}>+1w</Text></Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Snooze +1 hour"
+            hitSlop={MIN_HIT_SLOP_10}
+            onPress={() => handleSnooze(60 * 60 * 1000)}
+            style={styles.snoozeBtn}
+          >
+            <Text style={styles.snoozeText}>+1h</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Snooze +1 day"
+            hitSlop={MIN_HIT_SLOP_10}
+            onPress={() => handleSnooze(24 * 60 * 60 * 1000)}
+            style={styles.snoozeBtn}
+          >
+            <Text style={styles.snoozeText}>+1d</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Snooze +1 week"
+            hitSlop={MIN_HIT_SLOP_10}
+            onPress={() => handleSnooze(7 * 24 * 60 * 60 * 1000)}
+            style={styles.snoozeBtn}
+          >
+            <Text style={styles.snoozeText}>+1w</Text>
+          </Pressable>
         </View>
       </View>
 
       <View style={styles.actions}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={handleSave} style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Save button"
+          hitSlop={MIN_HIT_SLOP_10}
+          disabled={saving}
+          onPress={handleSave}
+          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+        >
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={handleDelete} style={styles.deleteBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete button"
+          hitSlop={MIN_HIT_SLOP_10}
+          onPress={handleDelete}
+          style={styles.deleteBtn}
+        >
           <Text style={styles.deleteText}>Delete</Text>
         </Pressable>
       </View>

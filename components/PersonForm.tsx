@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
+import { MIN_HIT_SLOP_10 } from '../lib/ui';
 import type { NewPerson } from '../lib/db';
 
 type Props = {
@@ -76,6 +77,7 @@ export default function PersonForm({ onSubmit }: Props): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save person"
+        hitSlop={MIN_HIT_SLOP_10}
         disabled={!canSubmit}
         onPress={handleSubmit}
         style={[styles.button, !canSubmit && { opacity: 0.6 }]}

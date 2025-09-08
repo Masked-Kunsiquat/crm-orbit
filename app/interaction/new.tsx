@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, Platform, ToastAndroid } from 'react-native';
-import DateTimePicker, { AndroidNativeProps, IOSNativeProps } from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel } from '../../lib/db';
 import { insertInteraction } from '../../lib/db';
+import { openAndroidDateTimePicker } from '../../lib/datetime';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function NewInteraction(): React.ReactElement {
   const params = useLocalSearchParams<{ personId: string; channel?: string }>();
@@ -17,6 +19,7 @@ export default function NewInteraction(): React.ReactElement {
   const [summary, setSummary] = useState<string>('');
   const [when, setWhen] = useState<Date>(new Date());
   const [showPicker, setShowPicker] = useState<boolean>(false);
+  const [picking, setPicking] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const router = useRouter();
 
@@ -38,9 +41,30 @@ export default function NewInteraction(): React.ReactElement {
     }
   }
 
-  function onChangePicker(_: any, date?: Date): void {
-    setShowPicker(Platform.OS === 'ios');
-    if (date) setWhen(date);
+  function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
+    // iOS inline picker only
+    if (event.type === 'set' && date) setWhen(date);
+  }
+
+  /**
+   * Open the date/time picker.
+   * On Android, guard against double-taps using `picking`.
+   */
+  async function handleOpenPicker(): Promise<void> {
+    if (Platform.OS === 'android') {
+      if (picking) return;
+      setPicking(true);
+      try {
+        const picked = await openAndroidDateTimePicker(when);
+        if (picked) setWhen(picked);
+      } catch (e) {
+        // no-op; ensure picking resets
+      } finally {
+        setPicking(false);
+      }
+      return;
+    }
+    setShowPicker(true);
   }
 
   return (
@@ -60,20 +84,27 @@ export default function NewInteraction(): React.ReactElement {
         placeholder={channel === 'note' ? 'Write a quick note…' : 'What happened?'}
       />
       <Text style={styles.label}>When</Text>
-      <Pressable accessibilityRole="button" onPress={() => setShowPicker(true)} style={styles.pickerBtn}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Select date and time"
+        hitSlop={MIN_HIT_SLOP_10}
+        onPress={handleOpenPicker}
+        style={styles.pickerBtn}
+      >
         <Text style={styles.pickerBtnText}>{when.toLocaleString()}</Text>
       </Pressable>
-      {showPicker && (
+      {Platform.OS === 'ios' && showPicker && (
         <DateTimePicker
           value={when}
           mode="datetime"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display="inline"
           onChange={onChangePicker}
         />
       )}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save interaction"
+        hitSlop={MIN_HIT_SLOP_10}
         disabled={saving}
         onPress={handleSave}
         style={[styles.saveBtn, saving && { opacity: 0.7 }]}
