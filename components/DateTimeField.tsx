@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { openAndroidDateTimePicker } from '../lib/datetime';
 
 type Props = {
@@ -14,10 +14,9 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
   const [show, setShow] = useState<boolean>(false);
   const disp = display ?? (Platform.OS === 'ios' ? 'inline' : 'default');
 
-  function onChangePicker(_: any, date?: Date): void {
+  function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
     // iOS inline picker only
-    setShow(true);
-    if (date) onChange(date);
+    if (event.type === 'set' && date) onChange(date);
   }
 
   async function handleOpen(): Promise<void> {
