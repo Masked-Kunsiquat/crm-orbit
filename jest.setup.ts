@@ -290,6 +290,10 @@ jest.mock('expo-notifications', () => {
       const idx = scheduled.findIndex((s) => s.identifier === id);
       if (idx >= 0) scheduled.splice(idx, 1);
     }),
+    __reset: () => {
+      scheduled.splice(0, scheduled.length);
+      counter = 0;
+    },
   };
 });
 
@@ -306,6 +310,12 @@ beforeEach(() => {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const SQLite = require('expo-sqlite');
     SQLite.__resetDb?.();
+  } catch {}
+  // Reset expo-notifications scheduled list
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Notifications = require('expo-notifications');
+    Notifications.__reset?.();
   } catch {}
 });
 
