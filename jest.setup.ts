@@ -275,6 +275,16 @@ jest.mock('expo-notifications', () => {
   const scheduled = [] as any[];
   let counter = 0;
   return {
+    // Provide runtime enum used by code under test
+    SchedulableTriggerInputTypes: {
+      CALENDAR: 'calendar',
+      DAILY: 'daily',
+      WEEKLY: 'weekly',
+      MONTHLY: 'monthly',
+      YEARLY: 'yearly',
+      DATE: 'date',
+      TIME_INTERVAL: 'timeInterval',
+    },
     setNotificationHandler: jest.fn(async () => {}),
     requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
     setNotificationChannelAsync: jest.fn(async () => {}),
