@@ -15,20 +15,23 @@ export async function openAndroidDateTimePicker(initial: Date): Promise<Date | n
           return;
         }
         const pickedDate = new Date(selectedDate);
-        // After picking date, open time picker.
-        DateTimePickerAndroid.open({
-          value: selectedDate,
-          mode: 'time',
-          onChange: (event2, selectedTime) => {
-            if (event2.type !== 'set' || !selectedTime) {
-              resolve(null);
-              return;
-            }
-            const finalDate = new Date(pickedDate);
-            finalDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
-            resolve(finalDate);
-          },
-        });
+        // After picking date, open time picker on the next tick to
+        // ensure the date dialog is fully dismissed on some OEMs.
+        setTimeout(() => {
+          DateTimePickerAndroid.open({
+            value: selectedDate,
+            mode: 'time',
+            onChange: (event2, selectedTime) => {
+              if (event2.type !== 'set' || !selectedTime) {
+                resolve(null);
+                return;
+              }
+              const finalDate = new Date(pickedDate);
+              finalDate.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+              resolve(finalDate);
+            },
+          });
+        }, 0);
       },
     });
   });
