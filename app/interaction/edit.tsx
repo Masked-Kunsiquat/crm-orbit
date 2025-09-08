@@ -127,7 +127,13 @@ export default function EditInteraction(): React.ReactElement {
         onChangeText={setSummary}
       />
       <Text style={styles.label}>When</Text>
-      <Pressable accessibilityRole="button" onPress={handleOpenPicker} style={styles.pickerBtn}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="When button"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={handleOpenPicker}
+        style={styles.pickerBtn}
+      >
         <Text style={styles.pickerBtnText}>{when.toLocaleString()}</Text>
       </Pressable>
       {Platform.OS === 'ios' && showPicker && (
