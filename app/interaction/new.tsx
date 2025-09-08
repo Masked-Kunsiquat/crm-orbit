@@ -6,6 +6,7 @@ import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel } from '../../lib/db';
 import { insertInteraction } from '../../lib/db';
 import { openAndroidDateTimePicker } from '../../lib/datetime';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function NewInteraction(): React.ReactElement {
   const params = useLocalSearchParams<{ personId: string; channel?: string }>();
@@ -86,7 +87,7 @@ export default function NewInteraction(): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Select date and time"
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        hitSlop={MIN_HIT_SLOP_10}
         onPress={handleOpenPicker}
         style={styles.pickerBtn}
       >
@@ -103,7 +104,7 @@ export default function NewInteraction(): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save interaction"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={MIN_HIT_SLOP_10}
         disabled={saving}
         onPress={handleSave}
         style={[styles.saveBtn, saving && { opacity: 0.7 }]}

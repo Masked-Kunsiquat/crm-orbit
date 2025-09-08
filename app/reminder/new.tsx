@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimeField from '../../components/DateTimeField';
 import { insertReminder } from '../../lib/db';
 import { scheduleReminder } from '../../lib/notify';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function NewReminder(): React.ReactElement {
   const params = useLocalSearchParams<{ personId: string }>();
@@ -71,7 +72,7 @@ export default function NewReminder(): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save reminder"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={MIN_HIT_SLOP_10}
         disabled={saving}
         onPress={handleSave}
         style={[styles.saveBtn, saving && { opacity: 0.7 }]}

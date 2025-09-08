@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
+import { MIN_HIT_SLOP_10 } from '../lib/ui';
 import type { Channel } from '../lib/db';
 
 type Props = {
@@ -20,7 +21,7 @@ export default function ChannelPicker({ value, onChange, options = DEFAULTS }: P
             key={opt}
             accessibilityRole="button"
             accessibilityLabel={`Select ${opt}`}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={MIN_HIT_SLOP_10}
             onPress={() => onChange(opt)}
             style={[styles.pill, selected && styles.pillActive]}
           >

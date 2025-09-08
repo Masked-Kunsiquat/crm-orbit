@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { MIN_HIT_SLOP_10 } from '../lib/ui';
 import { Link, useFocusEffect } from 'expo-router';
 import { getPeople, type Person } from '../lib/db';
 
@@ -35,7 +36,7 @@ export default function PeopleListScreen(): React.ReactElement {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Add button"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={MIN_HIT_SLOP_10}
             style={styles.addButton}
           >
             <Text style={styles.addButtonText}>Add</Text>
@@ -56,7 +57,7 @@ export default function PeopleListScreen(): React.ReactElement {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${item.firstName} ${item.lastName}`}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                hitSlop={MIN_HIT_SLOP_10}
                 style={styles.row}
               >
                 <Text style={styles.rowTitle}>

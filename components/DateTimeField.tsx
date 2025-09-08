@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { openAndroidDateTimePicker } from '../lib/datetime';
+import { MIN_HIT_SLOP_10 } from '../lib/ui';
 
 type Props = {
   label?: string;
@@ -47,7 +48,7 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label} button`}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={MIN_HIT_SLOP_10}
         onPress={handleOpen}
         style={styles.button}
       >

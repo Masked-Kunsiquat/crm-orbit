@@ -1,5 +1,6 @@
 import React, { PropsWithChildren, useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { MIN_HIT_SLOP_10 } from '../lib/ui';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 
@@ -76,7 +77,7 @@ export default function AuthGate({ children }: PropsWithChildren): React.ReactEl
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Unlock"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={MIN_HIT_SLOP_10}
         disabled={checking}
         onPress={authenticate}
         style={[styles.button, checking && { opacity: 0.7 }]}

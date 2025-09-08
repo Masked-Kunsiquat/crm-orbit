@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimeField from '../../components/DateTimeField';
 import { deleteReminder, getReminderById, markReminderDone, updateReminder, type Reminder } from '../../lib/db';
 import { cancelReminderById, scheduleReminder } from '../../lib/notify';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function EditReminder(): React.ReactElement {
   const params = useLocalSearchParams<{ id: string }>();
@@ -153,7 +154,7 @@ export default function EditReminder(): React.ReactElement {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Mark done button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={MIN_HIT_SLOP_10}
           onPress={handleMarkDone}
           style={styles.doneBtn}
         >
@@ -167,7 +168,7 @@ export default function EditReminder(): React.ReactElement {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Snooze +1 hour"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={MIN_HIT_SLOP_10}
             onPress={() => handleSnooze(60 * 60 * 1000)}
             style={styles.snoozeBtn}
           >
@@ -176,7 +177,7 @@ export default function EditReminder(): React.ReactElement {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Snooze +1 day"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={MIN_HIT_SLOP_10}
             onPress={() => handleSnooze(24 * 60 * 60 * 1000)}
             style={styles.snoozeBtn}
           >
@@ -185,7 +186,7 @@ export default function EditReminder(): React.ReactElement {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Snooze +1 week"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={MIN_HIT_SLOP_10}
             onPress={() => handleSnooze(7 * 24 * 60 * 60 * 1000)}
             style={styles.snoozeBtn}
           >
@@ -198,7 +199,7 @@ export default function EditReminder(): React.ReactElement {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Save button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={MIN_HIT_SLOP_10}
           disabled={saving}
           onPress={handleSave}
           style={[styles.saveBtn, saving && { opacity: 0.7 }]}
@@ -208,7 +209,7 @@ export default function EditReminder(): React.ReactElement {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Delete button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={MIN_HIT_SLOP_10}
           onPress={handleDelete}
           style={styles.deleteBtn}
         >

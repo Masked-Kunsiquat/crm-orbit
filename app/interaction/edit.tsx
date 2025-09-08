@@ -6,6 +6,7 @@ import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel, Interaction } from '../../lib/db';
 import { deleteInteraction, getInteractionById, updateInteraction } from '../../lib/db';
 import { openAndroidDateTimePicker } from '../../lib/datetime';
+import { MIN_HIT_SLOP_10 } from '../../lib/ui';
 
 export default function EditInteraction(): React.ReactElement {
   const params = useLocalSearchParams<{ id: string }>();
@@ -142,7 +143,7 @@ export default function EditInteraction(): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="When button"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={MIN_HIT_SLOP_10}
         onPress={handleOpenPicker}
         style={styles.pickerBtn}
       >
@@ -160,7 +161,7 @@ export default function EditInteraction(): React.ReactElement {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Save button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={MIN_HIT_SLOP_10}
           disabled={saving}
           onPress={handleSave}
           style={[styles.saveBtn, saving && { opacity: 0.7 }]}
@@ -170,7 +171,7 @@ export default function EditInteraction(): React.ReactElement {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Delete button"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={MIN_HIT_SLOP_10}
           onPress={handleDelete}
           style={styles.deleteBtn}
         >
