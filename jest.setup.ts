@@ -1,4 +1,4 @@
-// Extend jest-dom / jest-native matchers
+﻿// Extend jest-dom / jest-native matchers
 import '@testing-library/jest-native/extend-expect';
 
 // Lightweight and deterministic mocks for Expo + Router + SQLite
@@ -204,7 +204,7 @@ jest.mock('expo-sqlite', () => {
           const rows = [...state.people].sort((a, b) => b.created_at - a.created_at);
           return rows as any[];
         }
-        // PRAGMA table_info('interactions') — return expected columns
+        // PRAGMA table_info('interactions') GÇö return expected columns
         if (S.startsWith('PRAGMA TABLE_INFO')) {
           return [
             { name: 'id', type: 'TEXT' },
@@ -294,6 +294,10 @@ jest.mock('expo-notifications', () => {
       scheduled.splice(0, scheduled.length);
       counter = 0;
     },
+    resetMock: () => {
+      scheduled.splice(0, scheduled.length);
+      counter = 0;
+    },
   };
 });
 
@@ -318,4 +322,5 @@ beforeEach(() => {
     Notifications.__reset?.();
   } catch {}
 });
+
 
