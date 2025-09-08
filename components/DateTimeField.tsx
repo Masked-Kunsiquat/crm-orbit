@@ -12,6 +12,7 @@ type Props = {
 
 export default function DateTimeField({ label = 'Date & time', value, onChange, display }: Props): React.ReactElement {
   const [show, setShow] = useState<boolean>(false);
+  const [picking, setPicking] = useState<boolean>(false);
   const disp = display ?? (Platform.OS === 'ios' ? 'inline' : 'default');
 
   function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
@@ -19,10 +20,22 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
     if (event.type === 'set' && date) onChange(date);
   }
 
+  /**
+   * Open the date/time picker.
+   * On Android, guard against double-taps using `picking`.
+   */
   async function handleOpen(): Promise<void> {
     if (Platform.OS === 'android') {
-      const picked = await openAndroidDateTimePicker(value);
-      if (picked) onChange(picked);
+      if (picking) return;
+      setPicking(true);
+      try {
+        const picked = await openAndroidDateTimePicker(value);
+        if (picked) onChange(picked);
+      } catch (e) {
+        // no-op; ensure picking resets
+      } finally {
+        setPicking(false);
+      }
       return;
     }
     setShow(true);

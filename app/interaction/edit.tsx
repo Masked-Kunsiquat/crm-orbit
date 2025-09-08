@@ -17,6 +17,7 @@ export default function EditInteraction(): React.ReactElement {
   const [saving, setSaving] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [showPicker, setShowPicker] = useState<boolean>(false);
+  const [picking, setPicking] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -75,10 +76,22 @@ export default function EditInteraction(): React.ReactElement {
     if (event.type === 'set' && date) setWhen(date);
   }
 
+  /**
+   * Open the date/time picker.
+   * On Android, guard against double-taps using `picking`.
+   */
   async function handleOpenPicker(): Promise<void> {
     if (Platform.OS === 'android') {
-      const picked = await openAndroidDateTimePicker(when);
-      if (picked) setWhen(picked);
+      if (picking) return;
+      setPicking(true);
+      try {
+        const picked = await openAndroidDateTimePicker(when);
+        if (picked) setWhen(picked);
+      } catch (e) {
+        // no-op; ensure picking resets
+      } finally {
+        setPicking(false);
+      }
       return;
     }
     setShowPicker(true);
