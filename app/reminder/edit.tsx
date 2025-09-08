@@ -150,7 +150,13 @@ export default function EditReminder(): React.ReactElement {
       <View style={styles.row}>
         <Text style={styles.label}>Done</Text>
         <Switch accessibilityLabel="Mark done" value={done} onValueChange={setDone} />
-        <Pressable accessibilityRole="button" onPress={handleMarkDone} style={styles.doneBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Mark done button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleMarkDone}
+          style={styles.doneBtn}
+        >
           <Text style={styles.doneText}>Mark done</Text>
         </Pressable>
       </View>
@@ -158,17 +164,54 @@ export default function EditReminder(): React.ReactElement {
       <View style={styles.snoozeRow}>
         <Text style={styles.label}>Snooze</Text>
         <View style={styles.snoozeBtns}>
-          <Pressable accessibilityRole="button" onPress={() => handleSnooze(60 * 60 * 1000)} style={styles.snoozeBtn}><Text style={styles.snoozeText}>+1h</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={() => handleSnooze(24 * 60 * 60 * 1000)} style={styles.snoozeBtn}><Text style={styles.snoozeText}>+1d</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={() => handleSnooze(7 * 24 * 60 * 60 * 1000)} style={styles.snoozeBtn}><Text style={styles.snoozeText}>+1w</Text></Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Snooze +1 hour"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => handleSnooze(60 * 60 * 1000)}
+            style={styles.snoozeBtn}
+          >
+            <Text style={styles.snoozeText}>+1h</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Snooze +1 day"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => handleSnooze(24 * 60 * 60 * 1000)}
+            style={styles.snoozeBtn}
+          >
+            <Text style={styles.snoozeText}>+1d</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Snooze +1 week"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => handleSnooze(7 * 24 * 60 * 60 * 1000)}
+            style={styles.snoozeBtn}
+          >
+            <Text style={styles.snoozeText}>+1w</Text>
+          </Pressable>
         </View>
       </View>
 
       <View style={styles.actions}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={handleSave} style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Save button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          disabled={saving}
+          onPress={handleSave}
+          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+        >
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={handleDelete} style={styles.deleteBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleDelete}
+          style={styles.deleteBtn}
+        >
           <Text style={styles.deleteText}>Delete</Text>
         </Pressable>
       </View>

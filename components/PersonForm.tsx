@@ -76,6 +76,7 @@ export default function PersonForm({ onSubmit }: Props): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save person"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         disabled={!canSubmit}
         onPress={handleSubmit}
         style={[styles.button, !canSubmit && { opacity: 0.6 }]}

@@ -32,7 +32,12 @@ export default function PeopleListScreen(): React.ReactElement {
       <View style={styles.headerRow}>
         <Text accessibilityRole="header" style={styles.header}>People</Text>
         <Link asChild href="/people/new">
-          <Pressable accessibilityRole="button" style={styles.addButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add button"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.addButton}
+          >
             <Text style={styles.addButtonText}>Add</Text>
           </Pressable>
         </Link>
@@ -48,7 +53,12 @@ export default function PeopleListScreen(): React.ReactElement {
           contentContainerStyle={{ paddingVertical: 8 }}
           renderItem={({ item }) => (
             <Link asChild href={`/person/${item.id}`}>
-              <Pressable accessibilityRole="button" style={styles.row}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.firstName} ${item.lastName}`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.row}
+              >
                 <Text style={styles.rowTitle}>
                   {item.firstName} {item.lastName}
                 </Text>

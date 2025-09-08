@@ -32,7 +32,13 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable accessibilityRole="button" onPress={handleOpen} style={styles.button}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label} button`}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        onPress={handleOpen}
+        style={styles.button}
+      >
         <Text style={styles.buttonText}>{value.toLocaleString()}</Text>
       </Pressable>
       {Platform.OS === 'ios' && show && (

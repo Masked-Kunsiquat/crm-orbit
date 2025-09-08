@@ -71,6 +71,7 @@ export default function NewReminder(): React.ReactElement {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save reminder"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         disabled={saving}
         onPress={handleSave}
         style={[styles.saveBtn, saving && { opacity: 0.7 }]}

@@ -76,6 +76,7 @@ export default function AuthGate({ children }: PropsWithChildren): React.ReactEl
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Unlock"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         disabled={checking}
         onPress={authenticate}
         style={[styles.button, checking && { opacity: 0.7 }]}

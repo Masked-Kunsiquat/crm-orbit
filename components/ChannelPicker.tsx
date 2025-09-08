@@ -20,6 +20,7 @@ export default function ChannelPicker({ value, onChange, options = DEFAULTS }: P
             key={opt}
             accessibilityRole="button"
             accessibilityLabel={`Select ${opt}`}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => onChange(opt)}
             style={[styles.pill, selected && styles.pillActive]}
           >
