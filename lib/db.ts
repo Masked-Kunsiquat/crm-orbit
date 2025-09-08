@@ -117,6 +117,21 @@ export async function initDb(): Promise<void> {
       );
     }
   }
+
+  // Reminders table (Phase 3): TEXT PK, person_id TEXT FK, ISO8601 due_at
+  await db.execAsync(
+    `CREATE TABLE IF NOT EXISTS reminders (
+      id TEXT PRIMARY KEY,
+      person_id TEXT NOT NULL,
+      due_at TEXT NOT NULL,
+      title TEXT NOT NULL,
+      notes TEXT,
+      done INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(due_at);
+    CREATE INDEX IF NOT EXISTS idx_reminders_person ON reminders(person_id, due_at);`
+  );
 }
 
 function mapRow(row: PersonRow): Person {
@@ -268,4 +283,145 @@ export async function getInteractionById(id: string): Promise<Interaction | null
     channel: r.channel as Channel,
     summary: r.summary,
   };
+}
+
+// -----------------
+// Reminders (Phase 3)
+// -----------------
+
+export type Reminder = {
+  id: string;
+  personId: string; // stored as TEXT
+  dueAt: string; // ISO 8601
+  title: string;
+  notes?: string | null;
+  done: boolean;
+};
+
+export type NewReminder = {
+  personId: string | number;
+  title: string;
+  dueAt: string; // ISO 8601
+  notes?: string | null;
+};
+
+function mapReminderRow(r: { id: string; person_id: string; due_at: string; title: string; notes: string | null; done: number }): Reminder {
+  return {
+    id: r.id,
+    personId: String(r.person_id),
+    dueAt: r.due_at,
+    title: r.title,
+    notes: r.notes,
+    done: Number(r.done) === 1,
+  };
+}
+
+export async function insertReminder(input: NewReminder): Promise<string> {
+  const id = generateId();
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(
+      `INSERT INTO reminders (id, person_id, due_at, title, notes, done) VALUES (?, ?, ?, ?, ?, 0)`,
+      [id, String(input.personId), input.dueAt, input.title, input.notes ?? null]
+    );
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(input.personId)]);
+    await db.execAsync('COMMIT');
+    return id;
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function updateReminder(
+  id: string,
+  changes: { title: string; dueAt: string; notes?: string | null; done?: boolean; personId: string | number }
+): Promise<void> {
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    const sets: string[] = ['title = ?', 'due_at = ?', 'notes = ?'];
+    const params: any[] = [changes.title, changes.dueAt, changes.notes ?? null];
+
+    // Only include done when explicitly provided by caller
+    const hasDone = Object.prototype.hasOwnProperty.call(changes, 'done');
+    if (hasDone) {
+      sets.push('done = ?');
+      params.push(changes.done ? 1 : 0);
+    }
+
+    const sql = `UPDATE reminders SET ${sets.join(', ')} WHERE id = ?`;
+    params.push(id);
+
+    await db.runAsync(sql, params);
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(changes.personId)]);
+    await db.execAsync('COMMIT');
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function markReminderDone(id: string, personId: string | number): Promise<void> {
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(`UPDATE reminders SET done = 1 WHERE id = ?`, [id]);
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(personId)]);
+    await db.execAsync('COMMIT');
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function deleteReminder(id: string, personId: string | number): Promise<void> {
+  const now = Date.now();
+  await db.execAsync('BEGIN');
+  try {
+    await db.runAsync(`DELETE FROM reminders WHERE id = ?`, [id]);
+    await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(personId)]);
+    await db.execAsync('COMMIT');
+  } catch (e) {
+    await db.execAsync('ROLLBACK');
+    throw e;
+  }
+}
+
+export async function getReminderById(id: string): Promise<Reminder | null> {
+  const r = await db.getFirstAsync<{
+    id: string;
+    person_id: string;
+    due_at: string;
+    title: string;
+    notes: string | null;
+    done: number;
+  }>(
+    `SELECT id, person_id, due_at, title, notes, done FROM reminders WHERE id = ? LIMIT 1`,
+    [id]
+  );
+  return r ? mapReminderRow(r) : null;
+}
+
+export async function getUpcomingRemindersByPerson(
+  personId: string | number,
+  limit = 5
+): Promise<Reminder[]> {
+  const rows = await db.getAllAsync<{
+    id: string;
+    person_id: string;
+    due_at: string;
+    title: string;
+    notes: string | null;
+    done: number;
+  }>(
+    `SELECT id, person_id, due_at, title, notes, done
+     FROM reminders
+     WHERE person_id = ? AND done = 0
+     ORDER BY due_at ASC
+     LIMIT ?`,
+    [String(personId), Number(limit)]
+  );
+  return rows.map(mapReminderRow);
 }

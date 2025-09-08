@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
 import AuthGate from '../components/AuthGate';
 
@@ -22,7 +23,7 @@ describe('AuthGate', () => {
             <></>
             <>
               <></>
-              <>{/* children marker */}Unlocked Content</>
+              <Text>{/* children marker */}Unlocked Content</Text>
             </>
           </>
         </React.Fragment>
