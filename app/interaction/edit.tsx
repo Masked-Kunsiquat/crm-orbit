@@ -142,7 +142,7 @@ export default function EditInteraction(): React.ReactElement {
       <Text style={styles.label}>When</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="When button"
+        accessibilityLabel="Select date and time"
         hitSlop={MIN_HIT_SLOP_10}
         onPress={handleOpenPicker}
         style={styles.pickerBtn}
