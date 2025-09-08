@@ -341,16 +341,20 @@ export async function updateReminder(
   const now = Date.now();
   await db.execAsync('BEGIN');
   try {
-    await db.runAsync(
-      `UPDATE reminders SET title = ?, due_at = ?, notes = ?, done = ? WHERE id = ?`,
-      [
-        changes.title,
-        changes.dueAt,
-        changes.notes ?? null,
-        changes.done ? 1 : 0,
-        id,
-      ]
-    );
+    const sets: string[] = ['title = ?', 'due_at = ?', 'notes = ?'];
+    const params: any[] = [changes.title, changes.dueAt, changes.notes ?? null];
+
+    // Only include done when explicitly provided by caller
+    const hasDone = Object.prototype.hasOwnProperty.call(changes, 'done');
+    if (hasDone) {
+      sets.push('done = ?');
+      params.push(changes.done ? 1 : 0);
+    }
+
+    const sql = `UPDATE reminders SET ${sets.join(', ')} WHERE id = ?`;
+    params.push(id);
+
+    await db.runAsync(sql, params);
     await db.runAsync(`UPDATE people SET updated_at = ? WHERE id = ?`, [now, Number(changes.personId)]);
     await db.execAsync('COMMIT');
   } catch (e) {
