@@ -41,7 +41,6 @@ export default function NewInteraction(): React.ReactElement {
 
   function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
     // iOS inline picker only
-    setShowPicker(true);
     if (event.type === 'set' && date) setWhen(date);
   }
 
