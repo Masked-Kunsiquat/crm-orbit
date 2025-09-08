@@ -16,7 +16,15 @@ export default function RootLayout(): React.ReactElement {
     (async () => {
       try {
         await Notifications.setNotificationHandler({
-          handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }),
+          handleNotification: async () => ({
+            // New fields required by NotificationBehavior
+            shouldShowBanner: true,
+            shouldShowList: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+            // Keep for backwards compatibility on older platforms
+            shouldShowAlert: true,
+          }),
         });
 
         const { status } = await Notifications.requestPermissionsAsync();

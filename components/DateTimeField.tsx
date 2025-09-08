@@ -8,7 +8,7 @@ type Props = {
   label?: string;
   value: Date;
   onChange: (next: Date) => void;
-  display?: 'default' | 'spinner' | 'calendar' | 'clock' | 'inline';
+  display?: 'default' | 'spinner' | 'compact' | 'inline';
 };
 
 /**
@@ -19,7 +19,8 @@ type Props = {
 export default function DateTimeField({ label = 'Date & time', value, onChange, display }: Props): React.ReactElement {
   const [show, setShow] = useState<boolean>(false);
   const [picking, setPicking] = useState<boolean>(false);
-  const disp = display ?? (Platform.OS === 'ios' ? 'inline' : 'default');
+  const disp: 'default' | 'compact' | 'inline' | 'spinner' =
+    display ?? (Platform.OS === 'ios' ? 'inline' : 'default');
 
   function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
     // iOS inline picker only
@@ -48,7 +49,7 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
   }
 
   // Android: step 1 — date, then step 2 — time
-  function onChangeAndroidDate(event: any, selectedDate?: Date): void {
+  /* function onChangeAndroidDate(event: any, selectedDate?: Date): void {
     // Close date picker regardless of outcome
     setShowAndroidDate(false);
 
@@ -64,9 +65,9 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
       // Ensure next picker shows after current closes
       setTimeout(() => setShowAndroidTime(true), 0);
     }
-  }
+  } */
 
-  function onChangeAndroidTime(event: any, selectedTime?: Date): void {
+  /* function onChangeAndroidTime(event: any, selectedTime?: Date): void {
     // Close time picker regardless of outcome
     setShowAndroidTime(false);
 
@@ -85,15 +86,15 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
     } else {
       setTempAndroidDate(null);
     }
-  }
+  } */
 
-  const onPressOpen = (): void => {
+  /* const onPressOpen = (): void => {
     if (Platform.OS === 'ios') {
       setShowIOS(true);
     } else {
       setShowAndroidDate(true);
     }
-  };
+  }; */
 
   return (
     <View style={styles.wrap}>
