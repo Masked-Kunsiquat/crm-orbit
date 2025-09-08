@@ -145,10 +145,23 @@ export default function EditInteraction(): React.ReactElement {
         />
       )}
       <View style={styles.row}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={handleSave} style={[styles.saveBtn, saving && { opacity: 0.7 }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Save button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          disabled={saving}
+          onPress={handleSave}
+          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+        >
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={handleDelete} style={styles.deleteBtn}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={handleDelete}
+          style={styles.deleteBtn}
+        >
           <Text style={styles.deleteText}>Delete</Text>
         </Pressable>
       </View>
