@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, Platform, ToastAndroid } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel } from '../../lib/db';
@@ -39,10 +39,10 @@ export default function NewInteraction(): React.ReactElement {
     }
   }
 
-  function onChangePicker(_: any, date?: Date): void {
+  function onChangePicker(event: DateTimePickerEvent, date?: Date): void {
     // iOS inline picker only
     setShowPicker(true);
-    if (date) setWhen(date);
+    if (event.type === 'set' && date) setWhen(date);
   }
 
   async function handleOpenPicker(): Promise<void> {
