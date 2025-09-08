@@ -1,4 +1,4 @@
-// Extend jest-dom / jest-native matchers
+﻿// Extend jest-dom / jest-native matchers
 import '@testing-library/jest-native/extend-expect';
 
 // Lightweight and deterministic mocks for Expo + Router + SQLite
@@ -6,13 +6,21 @@ import '@testing-library/jest-native/extend-expect';
 // 1) Mock expo-router with a minimal Link and useFocusEffect wrapper
 jest.mock('expo-router', () => {
   const React = require('react');
-  const { useEffect } = React;
+  const { useEffect, useRef } = React;
   return {
     // Render-only Link; no navigation in tests
     Link: ({ children }: any) => React.createElement(React.Fragment, null, children),
-    // Bridge to useEffect so focus callbacks run once after mount
+    // Throttled focus bridge: run on mount and at most once per render burst
     useFocusEffect: (effect: any) => {
-      useEffect(effect, [effect]);
+      const lastRunRef = useRef(0);
+      useEffect(() => {
+        const now = Date.now();
+        if (now - lastRunRef.current > 5) {
+          lastRunRef.current = now;
+          return effect();
+        }
+        return undefined;
+      });
     },
   };
 });
@@ -42,43 +50,20 @@ jest.mock('expo-local-authentication', () => {
   return {
     hasHardwareAsync: jest.fn(async () => state.hasHardware),
     isEnrolledAsync: jest.fn(async () => state.isEnrolled),
-    authenticateAsync: jest.fn(async () => state.result),
+    authenticateAsync: jest.fn(async () => {
+      return state.result;
+    }),
     __setMock: (overrides: Partial<typeof state>) => Object.assign(state, overrides),
   };
 });
 
 // 4) Mock expo-sqlite with a tiny in-memory engine tailored to lib/db.ts usage
 jest.mock('expo-sqlite', () => {
-  type PersonRow = {
-    id: number;
-    first_name: string;
-    last_name: string;
-    nickname: string | null;
-    notes: string | null;
-    created_at: number;
-    updated_at: number;
-  };
-  type InteractionRow = {
-    id: string;
-    person_id: string; // TEXT
-    happened_at: string; // ISO
-    channel: string;
-    summary: string;
-  };
-
-  type ReminderRow = {
-    id: string;
-    person_id: string; // TEXT
-    due_at: string; // ISO
-    title: string;
-    notes: string | null;
-    done: number; // 0|1
-  };
-
+  // Plain JS shapes to satisfy Jest's mock factory scoping
   const state = {
-    people: [] as PersonRow[],
-    interactions: [] as InteractionRow[],
-    reminders: [] as ReminderRow[],
+    people: [] as any[],
+    interactions: [] as any[],
+    reminders: [] as any[],
     peopleAutoId: 1,
     inTx: false,
   };
@@ -112,7 +97,7 @@ jest.mock('expo-sqlite', () => {
         // INSERT person
         if (s.startsWith('INSERT INTO PEOPLE')) {
           const [firstName, lastName, nickname, notes, createdAt, updatedAt] = params;
-          const row: PersonRow = {
+          const row = {
             id: state.peopleAutoId++,
             first_name: String(firstName),
             last_name: String(lastName),
@@ -176,15 +161,29 @@ jest.mock('expo-sqlite', () => {
           });
           return {} as any;
         }
-        // UPDATE reminder full set
+        // UPDATE reminder done-only variant
+        if (s.startsWith('UPDATE REMINDERS SET DONE = 1 WHERE ID =')) {
+          const [id] = params;
+          const r = state.reminders.find((x) => x.id === String(id));
+          if (r) r.done = 1;
+          return {} as any;
+        }
+        // UPDATE reminder (supports variants with or without `done = ?`)
         if (s.startsWith('UPDATE REMINDERS SET')) {
-          const [title, dueAt, notes, done, id] = params;
+          const hasDone = s.includes(' DONE = ?');
+          const title = params[0];
+          const dueAt = params[1];
+          const notes = params[2];
+          const done = hasDone ? params[3] : undefined;
+          const id = hasDone ? params[4] : params[3];
           const r = state.reminders.find((x) => x.id === String(id));
           if (r) {
             r.title = String(title);
             r.due_at = String(dueAt);
             r.notes = notes ?? null;
-            r.done = Number(done) ? 1 : 0;
+            if (hasDone) {
+              r.done = Number(done) ? 1 : 0;
+            }
           }
           return {} as any;
         }
@@ -204,7 +203,7 @@ jest.mock('expo-sqlite', () => {
           const rows = [...state.people].sort((a, b) => b.created_at - a.created_at);
           return rows as any[];
         }
-        // PRAGMA table_info('interactions') — return expected columns
+        // PRAGMA table_info('interactions') GÇö return expected columns
         if (S.startsWith('PRAGMA TABLE_INFO')) {
           return [
             { name: 'id', type: 'TEXT' },
@@ -273,10 +272,19 @@ jest.mock('expo-sqlite', () => {
 
 // 5) Mock expo-notifications with in-memory scheduled notifications
 jest.mock('expo-notifications', () => {
-  type Scheduled = { identifier: string; content: any; trigger: any };
-  const scheduled: Scheduled[] = [];
+  const scheduled = [] as any[];
   let counter = 0;
   return {
+    // Provide runtime enum used by code under test
+    SchedulableTriggerInputTypes: {
+      CALENDAR: 'calendar',
+      DAILY: 'daily',
+      WEEKLY: 'weekly',
+      MONTHLY: 'monthly',
+      YEARLY: 'yearly',
+      DATE: 'date',
+      TIME_INTERVAL: 'timeInterval',
+    },
     setNotificationHandler: jest.fn(async () => {}),
     requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
     setNotificationChannelAsync: jest.fn(async () => {}),
@@ -290,6 +298,14 @@ jest.mock('expo-notifications', () => {
       const idx = scheduled.findIndex((s) => s.identifier === id);
       if (idx >= 0) scheduled.splice(idx, 1);
     }),
+    __reset: () => {
+      scheduled.splice(0, scheduled.length);
+      counter = 0;
+    },
+    resetMock: () => {
+      scheduled.splice(0, scheduled.length);
+      counter = 0;
+    },
   };
 });
 
@@ -307,5 +323,12 @@ beforeEach(() => {
     const SQLite = require('expo-sqlite');
     SQLite.__resetDb?.();
   } catch {}
+  // Reset expo-notifications scheduled list
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Notifications = require('expo-notifications');
+    Notifications.__reset?.();
+  } catch {}
 });
+
 

@@ -4,7 +4,7 @@ import { scheduleReminder, cancelReminderById } from '../lib/notify';
 describe('notify helpers: schedule + cancel by reminderId', () => {
   test('schedules and cancels associated notifications', async () => {
     const id = 'rem-123';
-    const due = new Date('2025-01-01T00:00:00.000Z');
+    const due = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
     const before = await Notifications.getAllScheduledNotificationsAsync();
     expect(before.length).toBe(0);
 
@@ -20,4 +20,3 @@ describe('notify helpers: schedule + cancel by reminderId', () => {
     expect(afterCancel.length).toBe(0);
   });
 });
-

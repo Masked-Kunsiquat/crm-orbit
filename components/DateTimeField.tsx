@@ -11,6 +11,11 @@ type Props = {
   display?: 'default' | 'spinner' | 'calendar' | 'clock' | 'inline';
 };
 
+/**
+ * DateTimeField: cross-platform date+time picker field.
+ * - iOS: uses single DateTimePicker with mode="datetime" (inline by default).
+ * - Android: two-step flow (date, then time), merging into one Date.
+ */
 export default function DateTimeField({ label = 'Date & time', value, onChange, display }: Props): React.ReactElement {
   const [show, setShow] = useState<boolean>(false);
   const [picking, setPicking] = useState<boolean>(false);
@@ -41,6 +46,54 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
     }
     setShow(true);
   }
+
+  // Android: step 1 — date, then step 2 — time
+  function onChangeAndroidDate(event: any, selectedDate?: Date): void {
+    // Close date picker regardless of outcome
+    setShowAndroidDate(false);
+
+    if (event?.type === 'dismissed') {
+      // User canceled at date stage; reset temp state
+      setTempAndroidDate(null);
+      return;
+    }
+
+    if (selectedDate) {
+      // Store picked calendar date, then show time picker
+      setTempAndroidDate(selectedDate);
+      // Ensure next picker shows after current closes
+      setTimeout(() => setShowAndroidTime(true), 0);
+    }
+  }
+
+  function onChangeAndroidTime(event: any, selectedTime?: Date): void {
+    // Close time picker regardless of outcome
+    setShowAndroidTime(false);
+
+    if (event?.type === 'dismissed') {
+      // User canceled time picking; do not commit changes
+      setTempAndroidDate(null);
+      return;
+    }
+
+    if (selectedTime && tempAndroidDate) {
+      // Merge picked date with picked time (preserves local timezone)
+      const merged = new Date(tempAndroidDate);
+      merged.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0);
+      setTempAndroidDate(null);
+      onChange(merged);
+    } else {
+      setTempAndroidDate(null);
+    }
+  }
+
+  const onPressOpen = (): void => {
+    if (Platform.OS === 'ios') {
+      setShowIOS(true);
+    } else {
+      setShowAndroidDate(true);
+    }
+  };
 
   return (
     <View style={styles.wrap}>
