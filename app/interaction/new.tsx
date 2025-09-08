@@ -85,8 +85,8 @@ export default function NewInteraction(): React.ReactElement {
       <Text style={styles.label}>When</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="When button"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel="Select date and time"
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         onPress={handleOpenPicker}
         style={styles.pickerBtn}
       >
