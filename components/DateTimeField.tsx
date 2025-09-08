@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { openAndroidDateTimePicker } from '../lib/datetime';
 
 type Props = {
   label?: string;
@@ -14,17 +15,27 @@ export default function DateTimeField({ label = 'Date & time', value, onChange, 
   const disp = display ?? (Platform.OS === 'ios' ? 'inline' : 'default');
 
   function onChangePicker(_: any, date?: Date): void {
-    setShow(Platform.OS === 'ios');
+    // iOS inline picker only
+    setShow(true);
     if (date) onChange(date);
+  }
+
+  async function handleOpen(): Promise<void> {
+    if (Platform.OS === 'android') {
+      const picked = await openAndroidDateTimePicker(value);
+      if (picked) onChange(picked);
+      return;
+    }
+    setShow(true);
   }
 
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable accessibilityRole="button" onPress={() => setShow(true)} style={styles.button}>
+      <Pressable accessibilityRole="button" onPress={handleOpen} style={styles.button}>
         <Text style={styles.buttonText}>{value.toLocaleString()}</Text>
       </Pressable>
-      {show && (
+      {Platform.OS === 'ios' && show && (
         <DateTimePicker value={value} mode="datetime" display={disp} onChange={onChangePicker} />
       )}
     </View>
@@ -44,4 +55,3 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#111827' },
 });
-

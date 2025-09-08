@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel, Interaction } from '../../lib/db';
 import { deleteInteraction, getInteractionById, updateInteraction } from '../../lib/db';
+import { openAndroidDateTimePicker } from '../../lib/datetime';
 
 export default function EditInteraction(): React.ReactElement {
   const params = useLocalSearchParams<{ id: string }>();
@@ -70,8 +71,18 @@ export default function EditInteraction(): React.ReactElement {
   }
 
   function onChangePicker(_: any, date?: Date): void {
-    setShowPicker(Platform.OS === 'ios');
+    // iOS inline picker only
+    setShowPicker(true);
     if (date) setWhen(date);
+  }
+
+  async function handleOpenPicker(): Promise<void> {
+    if (Platform.OS === 'android') {
+      const picked = await openAndroidDateTimePicker(when);
+      if (picked) setWhen(picked);
+      return;
+    }
+    setShowPicker(true);
   }
 
   async function handleDelete(): Promise<void> {
@@ -116,14 +127,14 @@ export default function EditInteraction(): React.ReactElement {
         onChangeText={setSummary}
       />
       <Text style={styles.label}>When</Text>
-      <Pressable accessibilityRole="button" onPress={() => setShowPicker(true)} style={styles.pickerBtn}>
+      <Pressable accessibilityRole="button" onPress={handleOpenPicker} style={styles.pickerBtn}>
         <Text style={styles.pickerBtnText}>{when.toLocaleString()}</Text>
       </Pressable>
-      {showPicker && (
+      {Platform.OS === 'ios' && showPicker && (
         <DateTimePicker
           value={when}
           mode="datetime"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display="inline"
           onChange={onChangePicker}
         />
       )}

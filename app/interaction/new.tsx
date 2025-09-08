@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, Platform, ToastAndroid } from 'react-native';
-import DateTimePicker, { AndroidNativeProps, IOSNativeProps } from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import ChannelPicker from '../../components/ChannelPicker';
 import type { Channel } from '../../lib/db';
 import { insertInteraction } from '../../lib/db';
+import { openAndroidDateTimePicker } from '../../lib/datetime';
 
 export default function NewInteraction(): React.ReactElement {
   const params = useLocalSearchParams<{ personId: string; channel?: string }>();
@@ -39,8 +40,18 @@ export default function NewInteraction(): React.ReactElement {
   }
 
   function onChangePicker(_: any, date?: Date): void {
-    setShowPicker(Platform.OS === 'ios');
+    // iOS inline picker only
+    setShowPicker(true);
     if (date) setWhen(date);
+  }
+
+  async function handleOpenPicker(): Promise<void> {
+    if (Platform.OS === 'android') {
+      const picked = await openAndroidDateTimePicker(when);
+      if (picked) setWhen(picked);
+      return;
+    }
+    setShowPicker(true);
   }
 
   return (
@@ -60,14 +71,14 @@ export default function NewInteraction(): React.ReactElement {
         placeholder={channel === 'note' ? 'Write a quick note…' : 'What happened?'}
       />
       <Text style={styles.label}>When</Text>
-      <Pressable accessibilityRole="button" onPress={() => setShowPicker(true)} style={styles.pickerBtn}>
+      <Pressable accessibilityRole="button" onPress={handleOpenPicker} style={styles.pickerBtn}>
         <Text style={styles.pickerBtnText}>{when.toLocaleString()}</Text>
       </Pressable>
-      {showPicker && (
+      {Platform.OS === 'ios' && showPicker && (
         <DateTimePicker
           value={when}
           mode="datetime"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          display="inline"
           onChange={onChangePicker}
         />
       )}
