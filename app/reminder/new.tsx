@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, Platform, ToastAndroid } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import DateTimeField from '../../components/DateTimeField';
@@ -6,17 +6,27 @@ import { insertReminder } from '../../lib/db';
 import { scheduleReminder } from '../../lib/notify';
 
 export default function NewReminder(): React.ReactElement {
-  const params = useLocalSearchParams<{ personId: string }>();
-  const personId = useMemo(() => String(params.personId), [params.personId]);
+  const router = useRouter();
+  const params = useLocalSearchParams<{ personId?: string }>();
+  const personId = useMemo(() => (typeof params.personId === 'string' ? params.personId.trim() : ''), [params.personId]);
+  const hasValidPerson = personId.length > 0 && !/^undefined|null$/i.test(personId);
   const [title, setTitle] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [when, setWhen] = useState<Date>(new Date(Date.now() + 60 * 60 * 1000)); // +1h
   const [saving, setSaving] = useState<boolean>(false);
-  const router = useRouter();
+
+  // Early guard: if no personId, redirect to home and show feedback
+  useEffect(() => {
+    if (!hasValidPerson) {
+      if (Platform.OS === 'android') ToastAndroid.show('Missing person context', ToastAndroid.SHORT);
+      router.replace('/');
+    }
+  }, [hasValidPerson, router]);
 
   async function actuallySave(): Promise<void> {
     setSaving(true);
     try {
+      if (!hasValidPerson) return;
       const id = await insertReminder({ personId, title: title.trim(), dueAt: when.toISOString(), notes: notes.trim() || undefined });
       await scheduleReminder({ id, title: title.trim(), due: when, personId });
       if (Platform.OS === 'android') ToastAndroid.show('Reminder set', ToastAndroid.SHORT);
@@ -40,6 +50,10 @@ export default function NewReminder(): React.ReactElement {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Schedule', style: 'default', onPress: actuallySave },
       ]);
+      return;
+    }
+    if (!hasValidPerson) {
+      Alert.alert('Missing person', 'Cannot save a reminder without a person.');
       return;
     }
     await actuallySave();
@@ -68,10 +82,13 @@ export default function NewReminder(): React.ReactElement {
         onChangeText={setNotes}
         placeholder="Any details to remember"
       />
+      {!hasValidPerson ? (
+        <Text style={{ color: '#b91c1c' }}>Missing person context. Returning to home…</Text>
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Save reminder"
-        disabled={saving}
+        disabled={saving || !hasValidPerson}
         onPress={handleSave}
         style={[styles.saveBtn, saving && { opacity: 0.7 }]}
       >
@@ -105,4 +122,3 @@ const styles = StyleSheet.create({
   },
   saveText: { color: '#fff', fontWeight: '600' },
 });
-
